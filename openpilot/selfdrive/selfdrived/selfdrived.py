@@ -653,8 +653,17 @@ class SelfdriveD(CruiseHelper):
   def step(self):
     CS = self.data_sample()
     self.update_events(CS)
+    # Rivian (pcmCruise) never sets buttonEnable itself; card only sets it for an ACC press that was kept from the ACM
+    # because openpilot couldn't engage. It may only surface the noEntry alert, never engage.
+    if self.CP.brand == 'rivian' and not self.events.contains(ET.NO_ENTRY):
+      self.events.remove(EventName.buttonEnable)
     if not self.CP.passive and self.initialized:
       self.enabled, self.active = self.state_machine.update(self.events)
+    # The Rivian buttonEnable has done its job (noEntry alert) once the state machine has run. Drop it before MADS
+    # sees it: MADS unified engagement treats buttonEnable as a real engagement and would turn lateral on, while
+    # the panda (which never saw the ACM enter ACC) refuses it -> "Controls Mismatch: Lateral".
+    if self.CP.brand == 'rivian':
+      self.events.remove(EventName.buttonEnable)
     if not self.CP.notCar:
       self.mads.update(CS)
     self.update_alerts(CS)
