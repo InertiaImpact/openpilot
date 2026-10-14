@@ -288,9 +288,17 @@ def main(demo=False):
     loader.start()
     loader.join(BIG_MODEL_TIMEOUT)
     model = big_model
-    params.put_bool("ChestnutActive", model is not None)
     if model is None:
       drop_chestnut()
+      if not params.get_bool("ChestnutRetry"):
+        # a crank can cut the chestnut power during the load, retry once with an onroad cycle
+        cloudlog.error("big model load failed, cycling onroad to retry")
+        params.put_bool("ChestnutRetry", True)
+        params.put_bool("OnroadCycleRequested", True)
+      else:
+        params.put_bool("ChestnutActive", False)
+    else:
+      params.put_bool("ChestnutActive", True)
 
   small_model = ModelState(vipc_client_main.width, vipc_client_main.height, False) if model is None or CHESTNUT else None
   if model is None:
