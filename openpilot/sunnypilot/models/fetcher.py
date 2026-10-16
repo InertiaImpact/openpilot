@@ -139,7 +139,9 @@ class ModelCache:
 class ModelFetcher:
   """Handles fetching and caching of model data from remote source"""
   MODEL_URL = "https://raw.githubusercontent.com/sunnypilot/sunnypilot-models/refs/heads/gh-pages/docs/driving_models_v22.json"
-  MODEL_URL_CHESTNUT = "https://raw.githubusercontent.com/sunnypilot/sunnypilot-models/refs/heads/gh-pages/docs/driving_models_chestnut_v25.json"
+  # This manifest contains the Lebowski recompiled24 artifact and tinygrad e837e367
+  # used on the last verified smooth drive. Keep it fixed for this rollback branch.
+  MODEL_URL_CHESTNUT = "https://raw.githubusercontent.com/sunnypilot/sunnypilot-models/3dfa8fdb9e187454a4b01051f60c9e0ba270c2de/docs/driving_models_chestnut_v25.json"
 
   MODEL_SOURCES = {
     "qcom": (MODEL_URL, ""),
