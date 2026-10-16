@@ -260,8 +260,10 @@ class TestRouteEngine(unittest.TestCase):
     distance = 111.195  # Mapbox's length of 0.001 degrees at the equator
     self.response = mapbox_response([
       {'geometry': {'coordinates': [[0, 0], [0.0005, 0], [0.001, 0]]}, 'distance': distance, 'duration': 10,
+       'maneuver': {'type': 'depart'},
        'bannerInstructions': [{'distanceAlongGeometry': 100, 'primary': {'text': 'Turn right', 'type': 'turn', 'modifier': 'right'}}]},
-      {'geometry': {'coordinates': [[0.001, 0], [0.002, 0]]}, 'distance': distance, 'duration': 10, 'bannerInstructions': []},
+      {'geometry': {'coordinates': [[0.001, 0], [0.002, 0]]}, 'distance': distance, 'duration': 10,
+       'maneuver': {'type': 'turn', 'modifier': 'right'}, 'bannerInstructions': []},
     ])
 
   def last_message(self, service):
@@ -290,6 +292,22 @@ class TestRouteEngine(unittest.TestCase):
     self.engine.last_position = (0.001, 0)  # at the maneuver
     self.engine.send_instruction()
     self.assertAlmostEqual(self.last_message('navInstruction').navInstruction.maneuverDistance, 0, delta=0.01)
+
+  def test_maneuvers_for_model(self):
+    from openpilot.selfdrive.navigation.helpers import VALHALLA_COMMAND_COUNT, navigation_input, valhalla_type
+    self.load_route()
+    self.engine.last_position = (0.0005, 0)  # halfway to the right turn
+    self.engine.send_instruction()
+    maneuvers = self.last_message('navInstruction').navInstruction.allManeuvers
+    self.assertEqual([(m.type, m.modifier) for m in maneuvers], [('turn', 'right')])  # depart is behind us
+    self.assertAlmostEqual(maneuvers[0].distance, 55.6, delta=0.5)
+
+    navigation = navigation_input(maneuvers, 10.)  # 10 m driven since the message
+    self.assertEqual(navigation.shape, (VALHALLA_COMMAND_COUNT + 1,))
+    self.assertEqual(np.flatnonzero(navigation[:-1]).tolist(), [valhalla_type('turn', 'right')])
+    self.assertAlmostEqual(navigation[-1], 0.456, delta=0.005)  # distance in units of 100 m
+    self.assertFalse(navigation_input(maneuvers, 100.).any())  # already past it
+    self.assertIsNone(valhalla_type('merge', ''))
 
   def test_banner_selection(self):
     banners = [{'distanceAlongGeometry': 100, 'primary': {'text': 'Turn right', 'type': 'turn', 'modifier': 'right'}},
