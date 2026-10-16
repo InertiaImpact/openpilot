@@ -5,6 +5,10 @@ class Api:
   def __init__(self, dongle_id):
     self.service = CommaConnectApi(dongle_id)
 
+  @property
+  def dongle_id(self):
+    return self.service.dongle_id
+
   def request(self, method, endpoint, **params):
     return self.service.request(method, endpoint, **params)
 

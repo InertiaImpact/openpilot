@@ -246,6 +246,15 @@ class TestRemoteTiles(TileServerCase):
       RemoteTiles()
 
 
+class TestApi(unittest.TestCase):
+  def test_real_api_has_what_navigation_uses(self):
+    # the tests above mock Api, so check the real one: navd and RemoteTiles call these
+    from openpilot.common.api import Api
+    api = Api('0123456789abcdef')
+    self.assertEqual(api.dongle_id, '0123456789abcdef')
+    self.assertTrue(callable(api.get) and callable(api.get_token))
+
+
 class TestRouteEngine(unittest.TestCase):
   def setUp(self):
     self.pm = MagicMock()
