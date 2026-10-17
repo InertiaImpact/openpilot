@@ -19,7 +19,7 @@ from openpilot.cereal.visionipc import VisionStreamType
 from msgq.visionipc import VisionIpcClient, VisionBuf
 from opendbc.car.car_helpers import get_demo_car_params
 from openpilot.common.swaglog import cloudlog
-from openpilot.common.params import Params
+from openpilot.common.params import Params, UnknownKeyName
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.realtime import config_realtime_process, DT_MDL
 from openpilot.common.transformations.camera import DEVICE_CAMERAS
@@ -45,6 +45,16 @@ LAT_SMOOTH_SECONDS = 0.0
 LONG_SMOOTH_SECONDS = 0.3
 MIN_LAT_CONTROL_SPEED = 0.3
 BIG_MODEL_TIMEOUT = 60
+
+
+def set_chestnut_model_error(params: Params, failed: bool) -> None:
+  try:
+    if failed:
+      params.put_bool("ChestnutModelError", True)
+    else:
+      params.remove("ChestnutModelError")
+  except UnknownKeyName:
+    cloudlog.warning("ChestnutModelError is missing from the compiled params library")
 
 
 def get_action_from_model(model_output: dict[str, np.ndarray], prev_action: log.ModelDataV2.Action,
@@ -306,10 +316,10 @@ def main(demo=False):
     loader.join(BIG_MODEL_TIMEOUT)
     model = big_model
     if model is None:
-      params.put_bool("ChestnutModelError", True)
+      set_chestnut_model_error(params, True)
     params.put_bool("ChestnutActive", model is not None)
     if model is not None:
-      params.remove("ChestnutModelError")
+      set_chestnut_model_error(params, False)
 
   small_model = ModelState(vipc_client_main.width, vipc_client_main.height, False) if model is None or CHESTNUT else None
   if model is None:
@@ -444,7 +454,7 @@ def main(demo=False):
         raise
       # fallback to small model
       cloudlog.exception("big model failed, fall back to small")
-      params.put_bool("ChestnutModelError", True)
+      set_chestnut_model_error(params, True)
       params.put_bool("ChestnutActive", False)
       assert small_model is not None
       model = small_model
