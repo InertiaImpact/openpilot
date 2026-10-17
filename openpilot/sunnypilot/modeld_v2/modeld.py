@@ -27,7 +27,7 @@ from msgq.visionipc import VisionIpcClient, VisionBuf
 from opendbc.car.car_helpers import get_demo_car_params
 from openpilot.common.file_chunker import open_file_chunked
 from openpilot.common.swaglog import cloudlog
-from openpilot.common.params import Params, UnknownKeyName
+from openpilot.common.params import Params
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.realtime import config_realtime_process, DT_MDL
 from openpilot.common.transformations.camera import DEVICE_CAMERAS
@@ -58,16 +58,6 @@ from openpilot.sunnypilot.selfdrive.controls.lib.relc import RoadEdgeLaneChangeC
 
 PROCESS_NAME = "openpilot.selfdrive.modeld.modeld_tinygrad"
 BIG_MODEL_TIMEOUT = 60
-
-
-def set_chestnut_model_error(params: Params, failed: bool) -> None:
-  try:
-    if failed:
-      params.put_bool("ChestnutModelError", True)
-    else:
-      params.remove("ChestnutModelError")
-  except UnknownKeyName:
-    cloudlog.warning("ChestnutModelError is missing from the compiled params library")
 
 
 def _pkl_exists(path):
@@ -387,10 +377,10 @@ def main(demo=False):
     loader.join(BIG_MODEL_TIMEOUT)
     model = big_model
     if model is None:
-      set_chestnut_model_error(params, True)
+      params.put_bool("ChestnutModelError", True)
     params.put_bool("ChestnutActive", model is not None)
     if model is not None:
-      set_chestnut_model_error(params, False)
+      params.remove("ChestnutModelError")
 
   small_model = ModelState(cam_w=vipc_client_main.width, cam_h=vipc_client_main.height, chestnut=False) if model is None or CHESTNUT else None
   if model is None:
@@ -534,7 +524,7 @@ def main(demo=False):
       if not params.get_bool("ChestnutActive"):
         raise
       cloudlog.exception("chestnut failed, falling back to small")
-      set_chestnut_model_error(params, True)
+      params.put_bool("ChestnutModelError", True)
       params.put_bool("ChestnutActive", False)
       assert small_model is not None
       model = small_model
