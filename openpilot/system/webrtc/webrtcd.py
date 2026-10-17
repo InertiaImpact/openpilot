@@ -653,6 +653,10 @@ class WebrtcdHandler(BaseHTTPRequestHandler):
 
   def _send(self, status: int, body: bytes, content_type: str) -> None:
     self.send_response(status)
+    self.send_header("Access-Control-Allow-Origin", "*")
+    self.send_header("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS")
+    self.send_header("Access-Control-Allow-Headers", "Content-Type")
+    self.send_header("Access-Control-Allow-Private-Network", "true")
     self.send_header("Content-Type", content_type)
     self.send_header("Content-Length", str(len(body)))
     self.end_headers()
@@ -712,7 +716,7 @@ class WebrtcdHandler(BaseHTTPRequestHandler):
     self._dispatch_request()
 
   def do_OPTIONS(self) -> None:
-    self._dispatch_request()
+    self._send(204, b"", "text/plain; charset=utf-8")
 
   def log_message(self, format: str, *args: object) -> None:  # noqa: A002  # stdlib override
     # silence default access logging; errors are logged explicitly in _dispatch_request
